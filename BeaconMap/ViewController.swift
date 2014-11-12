@@ -9,13 +9,18 @@
 import UIKit
 import CoreLocation
 
-class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UIWebViewDelegate {
     @IBOutlet var tableView: UITableView?
+    @IBOutlet var webView: UIWebView?
+    
     var beacons: [CLBeacon]?
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
+        var url = NSURL(string: "http://beacon-map.herokuapp.com/")
+        var requestObj = NSURLRequest(URL: url!)
+        webView!.loadRequest(requestObj)
     }
 
     override func didReceiveMemoryWarning() {
