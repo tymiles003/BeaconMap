@@ -15,11 +15,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, CLLocationManagerDelegate
     var window: UIWindow?
     var locationManager: CLLocationManager?
     var lastProximity: CLProximity?
-
+    let uuidString = "f7826da6-4fa2-4e98-8024-bc5b71e0893e"
 
     func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?)   -> Bool {
         
-        let uuidString = "f7826da6-4fa2-4e98-8024-bc5b71e0893e"
         let beaconIdentifier = "Kontakt"
         let beaconUUID = NSUUID(UUIDString: uuidString)
         let beaconRegion:CLBeaconRegion = CLBeaconRegion(proximityUUID: beaconUUID, identifier: beaconIdentifier)
@@ -109,6 +108,13 @@ extension AppDelegate: CLLocationManagerDelegate {
             }
             message = "No beacons nearby"
         }
+        let foundBeacon:CLBeacon = beacons[0] as CLBeacon
+        var beacon = Beacon(uuid: uuidString)
+        beacon.rssi = foundBeacon.rssi.description
+        beacon.lat = locationManager!.location.coordinate.latitude.description
+        beacon.lng = locationManager!.location.coordinate.longitude.description
+        
+        postBeaconToService(beacon)
         
         NSLog("Latitude: %@", locationManager!.location.coordinate.latitude.description)
         NSLog("Longitude: %@", locationManager!.location.coordinate.longitude.description)
@@ -131,4 +137,49 @@ extension AppDelegate: CLLocationManagerDelegate {
         NSLog("You exited the region")
         sendLocalNotificationWithMessage("You exited the region")
     }
+}
+
+extension AppDelegate {
+    
+    func postBeaconToService(beacon: Beacon) {
+        let baseUrl = NSURL(string: "http://beacon-map.herokuapp.com/")
+        let objectManager = RKObjectManager(baseURL: baseUrl)
+        let beaconMapping = RKObjectMapping(forClass: Beacon.self)
+        beaconMapping.addAttributeMappingsFromDictionary([
+            "uuid"  :   "uuid",
+            "lat"   :   "lat",
+            "lng"   :   "lng",
+            "local_name"    :   "localName",
+            "tx_power_level"   :   "txPowerLever",
+            "rssi"  :   "rssi",
+            "manufacturer_data"     :   "manufacturerData"
+        ])
+        
+        var inverseMapping = beaconMapping.inverseMapping()
+        var requestDescriptor = RKRequestDescriptor(
+            mapping: inverseMapping,
+            objectClass: Beacon.self,
+            rootKeyPath: "beacon",
+            method: RKRequestMethod.POST
+        )
+        
+        objectManager.addRequestDescriptor(requestDescriptor)
+        
+        objectManager.postObject(
+            beacon,
+            path: "beacons.json",
+            parameters: nil,
+            success: {
+                (operation: RKObjectRequestOperation!,
+                    mappingResult: RKMappingResult!) in
+                    println("beacon successfully posted")
+            },
+            failure: {
+                (operation: RKObjectRequestOperation!,
+                    error: NSError!) in
+                    println("beacon post failed")
+            }
+        )
+    }
+    
 }
